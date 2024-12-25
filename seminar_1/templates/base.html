@@ -1,0 +1,65 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Document</title>
+    <style>
+        body {
+            margin: 0;
+            padding: 0;
+        }
+        header {
+            width: 100%;
+            height: 100px;
+            background-color: #26db0e;
+        }
+        h1 {
+            text-align: center;
+            line-height: 100px;
+            margin: 0;
+        }
+        nav {
+            display: flex;
+            justify-content: center;
+            width: 100%;
+            height: 50px;
+        }
+        ul {
+            list-style: none;
+            display: flex;
+            gap: 10px;
+        }
+        footer {
+            display: flex;
+            justify-content: right;
+            width: 100%;
+            height: 50px;
+            background: #baeb09;
+        }
+    </style>
+</head>
+<body>
+    <header>
+        <h1>
+            {% block title %}
+                Мой сайт
+            {% endblock %}
+        </h1>
+    </header>
+    <nav>
+        <ul>
+            <li><a href="/">Главная</a></li>
+            <li><a href="/about/">О нас</a></li>
+            <li><a href="/contacts/">Контакты</a></li>
+        </ul>
+    </nav>
+    <content>
+    {% block content %}
+    {% endblock %}
+    </content>
+    <footer>
+        <p>Все права защищены &copy;</p>
+    </footer>
+</body>
+</html>
