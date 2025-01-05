@@ -1,4 +1,4 @@
-from flask import Flask, request, render_template, url_for, abort, flash
+from flask import Flask, request, render_template, url_for, abort, flash, redirect, make_response
 from pathlib import PurePath, Path
 
 app = Flask(__name__)
@@ -8,7 +8,6 @@ def index():
     return render_template('index.html')
 
 # Задание No1
-# Создать страницу, на которой будет кнопка "Нажми меня", при нажатии на которую будет переход на другую страницу с приветствием пользователя по имени.
 
 @app.get('/01/')
 def name():
@@ -19,7 +18,6 @@ def hello():
     return f'Hello {request.form.get("name")}'
 
 # Задание No2
-# Создать страницу, на которой будет изображение и ссылка на другую страницу, на которой будет отображаться форма для загрузки изображений.
 
 @app.get('/02/')
 def file_img():
@@ -39,8 +37,6 @@ def file_uploaded():
     return f'file: {file.filename} is uploaded'
 
 # Задание No3
-# - Создать страницу, на которой будет форма для ввода логина и пароля
-# - При нажатии на кнопку "Отправить" будет произведена проверка соответствия логина и пароля и переход на страницу приветствия пользователя или страницу с ошибкой.
 
 @app.get('/03/')
 def login():
@@ -54,8 +50,6 @@ def login_check():
         return "error"
     
 # Задание No4
-# - Создать страницу, на которой будет форма для ввода текста и кнопка "Отправить"
-# - При нажатии кнопки будет произведен подсчет количества слов в тексте и переход на страницу с результатом.
 
 @app.get('/04/')
 def text():
@@ -66,8 +60,6 @@ def text_check():
     return str(len(request.form.get('text').split()))
 
 # Задание No5
-# - Создать страницу, на которой будет форма для ввода двух чисел и выбор операции (сложение, вычитание, умножение или деление) и кнопка "Вычислить"
-# - При нажатии на кнопку будет произведено вычисление результата выбранной операции и переход на страницу с результатом.
 
 @app.route('/05/', methods=['GET', 'POST'])
 def calc():
@@ -76,8 +68,6 @@ def calc():
     return render_template('05.html')
 
 # Задание No6
-# - Создать страницу, на которой будет форма для ввода имени и возраста пользователя и кнопка "Отправить"
-# - При нажатии на кнопку будет произведена проверка возраста и переход на страницу с результатом или на страницу с ошибкой в случае некорректного возраста.
 
 @app.route('/06/', methods=['POST', 'GET'])
 def age():
@@ -88,8 +78,6 @@ def age():
     return render_template('06.html')
 
 # Задание No7
-# - Создать страницу, на которой будет форма для ввода числа и кнопка "Отправить"
-# - При нажатии на кнопку будет произведено перенаправление на страницу с результатом, где будет выведено введенное число и его квадрат.
 
 @app.route('/07/', methods=['POST', 'GET'])
 def square():
@@ -99,8 +87,6 @@ def square():
     return render_template('07.html')
 
 # Задание No8
-# - Создать страницу, на которой будет форма для ввода имени и кнопка "Отправить"
-# - При нажатии на кнопку будет произведено перенаправление на страницу с flash сообщением, где будет выведено "Привет, {имя}!".
 
 app.secret_key = b'12345'
 @app.route('/08/', methods=['GET', 'POST'])
@@ -109,9 +95,37 @@ def flashka():
         flash(f'Привет, {request.form.get("name")}!', 'success')
     return render_template('08.html')
 
+# Задание No9
+
+@app.route('/09/', methods=['GET', 'POST'])
+def cook():
+    if request.method == 'POST':
+        # Проверка данных формы
+        if not request.form['name']:
+            flash('Введите имя!', 'warning')
+            return redirect(url_for('cook'))
+        elif not request.form['email']:
+            flash("Неверная почта", 'danger')
+            return redirect(url_for('cook'))
+        
+        # Обработка данных формы
+        response = make_response(redirect(url_for('cook')))
+        response.set_cookie('username', request.form['name'])
+        return response
+    if name := request.cookies.get('username'):
+        flash(f'{name}, привет!', 'success')
+    return render_template('09.html')
+
+@app.route('/logout/', methods=['GET', 'POST'])
+def logout():
+    response = make_response(redirect(url_for('cook')))
+    response.delete_cookie('username')
+    return response
+
 @app.errorhandler(403)
 def limita(e):
     return "Not allowed!", 403
 
 if __name__ == '__main__':
     app.run(debug=True, host='0.0.0.0', port=5500)
+
