@@ -102,7 +102,7 @@ def cook():
     if request.method == 'POST':
         # Проверка данных формы
         if not request.form['name']:
-            flash('Введите имя!', 'warning')
+            flash('Неверное имя!', 'danger')
             return redirect(url_for('cook'))
         elif not request.form['email']:
             flash("Неверная почта", 'danger')
@@ -118,6 +118,7 @@ def cook():
 
 @app.route('/logout/', methods=['GET', 'POST'])
 def logout():
+    flash(f'{request.cookies.get("username")}, до свидания!', 'warning')
     response = make_response(redirect(url_for('cook')))
     response.delete_cookie('username')
     return response
