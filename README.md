@@ -591,12 +591,669 @@ session['name'] = 'John'
 session.pop('name')
 ```
 
-## Примеры
+## Примеры 02
 
-### Задание 1
+[Семинар 02](seminar_2/app.py)
 
-Создать страницу, на которой будет кнопка "Нажми меня", при нажатии на которую будет переход на другую страницу с приветствием пользователя по имени.
+# 03
 
-### Задание 2
+Для работы с СУБД можно использовать встроенные в python библиотеки:
 
-Создать страницу, на которой будет изображение и ссылка на другую страницу, на которой будет отображаться форма для загрузки изображений.
+[Пример работы с SQLite](lesson_3/sqlite.py)
+
+Нативные библиотеки, т.е. разработанные компаниями производящими СУБД:
+
+Сначала установить нативную библиотеку
+
+```bash
+pip install mysql-connector-python
+```
+
+[Пример с MySql](lesson_3/mysql_script.py)
+
+Но, есть универсальный инструмент ORM SQLAlchemy.
+
+ORM (Object-Relational Mapping) - это паттерн программирования, который позволяет работать с базами данных, представляя данные в виде объектов и классов, а не в виде SQL-запросов.
+
+
+## Flask-SQLAlchemy
+
+Библиотека расширяющая flask, для облегчения работы с СУБД.
+
+### Установки и настройка
+
+```bash
+pip install Flask-SQLAlchemy
+```
+
+Импорт в проект
+
+```python
+from flask_sqlalchemy import SQLAlchemy
+```
+
+### Подключение к ДБ
+
+Для подключения SQLite используем:
+
+```python
+from flask import Flask
+from flask_sqlalchemy import SQLAlchemy
+
+app = Flask(__name__)
+app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///mydatabase.db'
+db = SQLAlchemy(app)
+```
+
+Создали объект db на базе класса SQLAlchemy, который далее и буде эксплуатироваться
+
+[Скрипт с кодом выше](lesson_3/app_01.py)
+
+При старте этого скрипта, создастся папка instance в директории запуска, в ней обычно располагается файл БД.
+
+С помощью SQLAlchemy можно подключаться к MySQL
+
+```python
+app.config['SQLALCHEMY_DATABASE_URI'] = 'mysql+pymysql://username:password@hostname/database_name'
+```
+
+Или к PostgreSQL
+
+```python
+postgresql+psycopg2://username:password@hostname/database_name
+```
+
+### Модель
+
+Модель алхимии - это класс, который описывает структуру таблицы в базе данных.
+
+Обычно, служебный код моделей, т.е. структура таблиц базы, выносится в отдельные компоненты models.
+
+```python
+from flask_sqlalchemy import SQLAlchemy
+db = SQLAlchemy()
+```
+
+Следовательно в [основном скрипте](lesson_3/app_02.py) мы не импортируем и не создаем объект класса алхимии.
+
+Вместо этого импортируем объект из компонента моделей (models) и инициализируем созданный объект алхимии:
+
+```python
+from lesson_3.models_02 import db
+db.init_app(app)
+```
+
+Для описания модели используют следующие типы данных:
+
+- Integer — целое число
+- String — строка
+- Text — текстовое поле
+- Boolean — булево значение
+- DateTime — дата и время
+- Float — число с плавающей точкой
+- Decimal — десятичное число (для денег)
+- Enum — перечисление значений
+- ForeignKey — внешний ключ к другой таблице
+
+### Создание моделей БД
+
+Предположим, что мы делаем базу данных социальной сети, в которой три таблицы:
+
+- пользователи
+- статьи
+- комментарии
+
+ORM предполагает наличие еще одного уровня абстракции с помощью моделей на основе классовой реализации.
+Создадим 3 класса моделей:
+
+1. User() - управляет таблицей пользователей в СУБД 
+2. Post() - управляет таблицей статей
+3. Comment() - управляет таблице комментариев
+
+#### User()
+
+В [компоненте моделей](lesson_3/models_03.py) создадим 4 поля для работы с таблицей пользователей БД с помощью класса User:
+
+```python
+id = db.Column(db.Integer, primary_key=True)
+username = db.Column(db.String(80), unique=True, nullable=False)
+email = db.Column(db.String(120), unique=True, nullable=False)
+created_at = db.Column(db.DateTime, default=datetime.utcnow)
+posts = db.relationship('Post', backref='author', lazy=True)
+```
+
+5 полей модели User():
+
+1. id - целочисленное поле, является первичным ключом таблицы, автоматически генерируется при добавлении записи
+2. username - строка до 80 символов с ограничением на уникальность и обязательностью заполнения
+3. email - строка до 120 символов с ограничением на уникальность и обязательностью заполнения
+4. created_at - дата и время создания записи, автоматически заполняется текущей датой и временем при добавлении записи
+5. posts - взаимосвязь, где первый аргумент указывает на связанную модель Post
+
+Пятое поле класса `posts` не связано с одноименной колонкой БД, является фишкой алхимии, ускоряющей работу программы python.
+Образует связь с моделью Post, backref - обратное отношение, lazy - загрузка данных по мере необходимости.
+
+#### Post()
+
+Добавим в [компоненте моделей](lesson_3/models_04.py) еще таблицу статей с помощью класса Post:
+
+```python
+id = db.Column(db.Integer, primary_key=True)
+title = db.Column(db.String(80), nullable=False)
+content = db.Column(db.Text, nullable=False)
+author_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
+created_at = db.Column(db.DateTime, default=datetime.utcnow)
+```
+
+5 полей модели Post():
+
+1. id - целочисленное поле, первичный ключ таблицы статей
+2. title - строковое обязательное поле до 80 символов, не уникальное, т.к. заголовки могут повторяться
+3. content - текстовое обязательное поле
+4. author_id - целочисленное поле, внешний ключ к полю id таблицы пользователей
+5. created_at - дата и время создания записи и автоматически заполняется текущей датой и временем при добавлении записи
+
+#### Comment()
+
+Добавим третью модель в [компоненте моделей](lesson_3/models_05.py), связав таблицу комментариев БД с помощью класса Comment:
+
+```python
+id = db.Column(db.Integer, primary_key=True)
+content = db.Column(db.Text, nullable=False)
+post_id = db.Column(db.Integer, db.ForeignKey('post.id'), nullable=False)
+author_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
+created_at = db.Column(db.DateTime, default=datetime.utcnow)
+```
+
+5 полей модели Comment:
+
+1. id
+2. content - обязательное для заполнения
+3. post_id - обязательное для заполнения, внешний ключ к полю id таблицы статей
+4. author_id - внешний ключ к полю id таблицы пользователей
+5. created_at - дата и время создания записи, автоматически заполняется текущей датой и временем при добавлении записи
+
+### Создание таблиц БД
+
+В [компонент моделей](lesson_3/models_05.py), можно поместить следующий код для инициализации БД с помощью командной строки:
+
+```python
+@app.cli.command('init-db')
+def create_db():
+    db.create_all()
+    print('db created')
+```
+
+Далее выполнить команду в консоли:
+
+```bash
+flask --app models_05.py init-db
+```
+
+В текущей директории появится папка instance с файлом SQLite базы `mydatabase.db`.
+Код для командной строки можно положить в любой файл: главный компонент, компонент модели или wsgi.py главное правильные импорты.
+
+### Работа с БД
+
+CRUD:
+
+1. Create
+2. Read (filter)
+3. Update
+4. Delete
+
+#### 1. Create
+
+Создадим новый объект на основе модели класса User
+
+```python
+@app.cli.command("add-john")
+def add_user():
+    user = User(username='john', email='john@example.com')
+    db.session.add(user)
+    db.session.commit()
+    print('John add in DB!')
+```
+
+Метод commit() обязателен для применения изменений. Необходимо запустить в консоли терминала [компонент моделей](lesson_3/models_06.py):
+
+```bash
+flask --app models_06.py add-john
+```
+
+### 2. Read
+
+При создании классов моделей ранее, был задан метод `__repr__`, которая сработает в случае вывода на печать:
+
+```python
+def __repr__(self):
+    return f'User({self.username}, {self.email})'
+```
+
+Поэтому при чтении из БД, и для простого вывода ее содержимого в консоль, можно ограничится функцией print():
+
+```python
+...
+@app.cli.command("read-db")
+def read_db():
+    users = User.query.all()
+    print(users)
+```
+
+После выполнения команды в терминале:
+
+```bash
+flask --app models_06.py read-db
+```
+
+Получим вывод содержимого из таблицы пользователей в консоль:
+
+```bash
+[User(user1, user1@mail.ru), User(user2, user2@mail.ru), User(user3, user3@mail.ru), User(user4, user4@mail.ru), User(user5, user5@mail.ru)]
+```
+
+### 3. Update
+
+Поменяем почту у первого найденного пользователя:
+
+```python
+@app.cli.command("edit-john")
+def edit_user():
+    user = User.query.filter_by(username='john').first()
+    user.email = 'new_email@example.com'
+    db.session.commit()
+    print('Edit John mail in DB!')
+```
+
+.first() - метод останавливает на первой найденной записи
+
+Запуск на изменение через консоль:
+
+```bash
+flask --app models_06.py edit-john
+```
+
+### 4. Delete
+
+Удалим первую найденную запись:
+
+```python
+@app.cli.command("del-john")
+def del_user():
+    user = User.query.filter_by(username='john').first()
+    db.session.delete(user)
+    db.session.commit()
+    print('Delete John from DB!')
+```
+
+Запуск скрипта на удаление первой найденной записи:
+
+```bash
+flask --app models_06.py del-john
+```
+
+### Наполним БД случайными данными
+
+```python
+@app.cli.command("fill-db")
+def fill_tables():
+    count = 5
+    # Добавляем пользователей
+    for user in range(1, count + 1):
+        new_user = User(username=f'user{user}',
+        email=f'user{user}@mail.ru')
+        db.session.add(new_user)
+        db.session.commit()
+    # Добавляем статьи
+    for post in range(1, count ** 2):
+        author = User.query.filter_by(username=f'user{post % count + 1}').first()
+        new_post = Post(title=f'Post title {post}',
+        content=f'Post content {post}', author=author)
+        db.session.add(new_post)
+    db.session.commit()
+```
+
+Запуск скрипта на наполнение БД:
+
+```bash
+flask --app models_06.py fill-db
+```
+
+### Вывод данных в браузере
+
+В основном компоненте flask-приложения импортируем нужные классы из моделей и добавим маршрут /users/:
+
+```python
+from models_06 import app, User
+
+@app.route('/users/')
+def all_users():
+    users = User.query.all()
+    context = {'users': users}
+    return render_template('users.html', **context)
+```
+
+В папке templates создадим шаблон [users.html](lesson_3/templates/users.html), расширяющий [базовый шаблон](lesson_3/templates/base.html), с помощью цикла jinja выводим весь контент в браузер:
+
+```html
+{%block content%}
+    <div class="row">
+        {% for user in users %}
+        <p class="col-12 col-md-6">Username: {{ user.username }}<br>Email: {{ user.email }}</p>
+        {% endfor %}
+    </div>
+{% endblock %}
+```
+
+### Фильтрация данных
+
+#### Фильтрация из User()
+
+Метод filter() принимает параметры фильтрации в качестве аргументов. Создадим новый динамический маршрут в [главном компоненте](lesson_3/app_07.py):
+
+```python
+@app.route('/users/<username>/')
+def users_by_username(username):
+    users = User.query.filter(User.username == username).all()
+    context = {'users': users}
+    return render_template('users.html', **context)
+```
+
+При вводе адреса в браузере http://localhost:5500/users/user1 отобразится информация только по заданному пользователю.
+
+#### Фильтрация из Post()
+
+Изменим [главный компонент](lesson_3/app_08.py), чтобы иметь возможность фильтровать данные из таблицы статей, для этого импортируем jsonify и класс модели Post и добавим маршрут:
+
+```python
+from flask import jsonify
+from models_06 import Post
+
+@app.route('/posts/author/<int:user_id>/')
+def get_posts_by_author(user_id):
+    posts = Post.query.filter_by(author_id=user_id).all()
+    if posts:
+        return jsonify([{'id': post.id, 'title': post.title, 'content': post.content, 'created_at': post.created_at} for post in posts])
+    else:
+        return jsonify({'error': 'Posts not found'})
+```
+
+В результате ввода в адресной строке http://localhost:5500/posts/author/1/ получим JSON-ответ:
+
+```json
+[
+  {
+    "content": "Post content 5",
+    "created_at": "Thu, 09 Jan 2025 22:08:24 GMT",
+    "id": 5,
+    "title": "Post title 5"
+  },
+  {
+    "content": "Post content 10",
+    "created_at": "Thu, 09 Jan 2025 22:08:25 GMT",
+    "id": 10,
+    "title": "Post title 10"
+  },
+  {
+    "content": "Post content 15",
+    "created_at": "Thu, 09 Jan 2025 22:08:26 GMT",
+    "id": 15,
+    "title": "Post title 15"
+  },
+  {
+    "content": "Post content 20",
+    "created_at": "Thu, 09 Jan 2025 22:08:27 GMT",
+    "id": 20,
+    "title": "Post title 20"
+  }
+]
+```
+
+#### Фильтрация по дате
+
+Добавим импорт библиотеки для работы с датой и добавим маршрут для фильтрации статей за прошлую неделю:
+
+```python
+from datetime import datetime, timedelt
+
+@app.route('/posts/last-week/')
+def get_posts_last_week():
+    date = datetime.utcnow() - timedelta(days=7)
+    posts = Post.query.filter(Post.created_at >= date).all()
+    if posts:
+        return jsonify([{'id': post.id, 'title': post.title, 'content': post.content, 'created_at': post.created_at} for post in posts])
+    else:
+        return jsonify({'error': 'Posts not found'})
+```
+
+При вводе в браузере http://localhost:5500/posts/last-week/ отобразится JSON-ответ содержащий все посты за неделю.
+
+## Flask-WTForm
+
+Это модуль Flask для работы с формами веб-приложений на Python. Он позволяет легко
+создавать и обрабатывать формы, валидировать данные, защищать приложение от атак CSRF (межсайтовой подделки
+запросов).
+
+Для установки Flask-WTF выполним в консоли:
+
+```bash
+pip install Flask-WTF
+```
+
+Импортировать в проект:
+
+```python
+from flask_wtf import FlaskForm
+```
+
+### Защита от CSRF-атак
+
+Необходимо импортировать модуль CSRFProtect и установить секретный ключ приложения:
+
+```python
+from flask_wtf.csrf import CSRFProtect
+app = Flask(__name__)
+app.config['SECRET_KEY'] = 'dac238ac08a088965ebd9d0741c816571b357bcf67c5f1a2ae9a070900995a65'
+csrf = CSRFProtect(app)
+```
+
+Отключение защиты осуществляется с помощью декоратора @csrf.exempt.
+
+Напоминаю как с помощью python-консоли быстро сгенерить ключ:
+
+```bash
+>>> import secrets
+>>> secrets.token_hex()
+'dac238ac08a088965ebd9d0741c816571b357bcf67c5f1a2ae9a070900995a65'
+```
+
+### Типы полей WTF-форм
+
+1. StringField — строковое поле для ввода текста;
+2. IntegerField — числовое поле для ввода целочисленных значений;
+3. FloatField — числовое поле для ввода дробных значений;
+4. BooleanField — чекбокс;
+5. SelectField — выпадающий список;
+6. DateField — поле для ввода даты;
+7. FileField — поле для загрузки файла.
+
+### Создание WTF-форм
+
+В [компоненты форм](lesson_3/forms_10.py) определим класс формы:
+
+```python
+from flask_wtf import FlaskForm
+from wtforms import StringField, PasswordField
+from wtforms.validators import DataRequired
+
+class LoginForm(FlaskForm):
+    username = StringField('Username', validators=[DataRequired()])
+    password = PasswordField('Password', validators=[DataRequired()])
+```
+В импортах берем из библиотеки WTF-forms функции: StringField, PasswordField и валидацию DataRequired.
+
+В классе определены два поля: 
+
+1. username - обязательное строковое поле
+2. password - обязательное поле ввода пароля
+
+validators - атрибут принимающий список проверок, в нашем случае указан параметр DataRequired, т.е. обязательный
+
+
+В [компоненте форм](lesson_3/forms_11.py) добавлена более сложная форма RegisterForm:
+
+```python
+from wtforms import StringField, IntegerField, SelectField
+from wtforms.validators import DataRequired
+
+class RegisterForm(FlaskForm):
+    name = StringField('Name', validators=[DataRequired()])
+    age = IntegerField('Age', validators=[DataRequired()])
+    gender = SelectField('Gender', choices=[('male', 'Мужчина'), ('female', 'Женщина')])
+```
+
+RegisterForm() определяет три поля: 
+
+1. name - обязательное строковое
+2. age - обязательное целое
+3. gender - выпадающий список
+
+SelectField() вторым параметром choice принимает значения для выпадающего списка
+
+### Валидация данных wtf-forms
+
+Можно создавать свои валидаторы, но существуют готовые валидаторы: DataRequired, Email, Length и другие.
+
+```python
+from wtforms.validators import DataRequired, Email, EqualTo, Length
+
+class RegistrationForm(FlaskForm):
+    email = StringField('Email', validators=[DataRequired(), Email()])
+    password = PasswordField('Password', validators=[DataRequired(), Length(min=6)])
+    confirm_password = PasswordField('Confirm Password', validators=[DataRequired(), EqualTo('password')])
+```
+
+В [коде](lesson_3/forms_12.py) функции типов полей форм в параметр validators принимают список валидирующих функций.
+
+Функции валидации:
+
+- DataRequired() - обязательный параметр
+- Email() - данные должны быть электронной почтой
+- Length() - принимает параметры минимальной и максимальной длины
+- EqualTo() - принимает строку, с которой поле должно совпадать, например при повторе пароля
+
+Для того чтобы валидатор электронной почты заработал необходимо установить библиотеку:
+
+```python
+pip install email-validator
+```
+
+### Визуализация форм в html-приложении
+
+В [главном компоненте](lesson_3/app_13.py) добавим новый маршрут /login/:
+
+```python
+@app.route('/login/', methods=['GET', 'POST'])
+def login():
+    form = LoginForm()
+    if request.method == 'POST' and form.validate():
+        pass
+    return render_template('login.html', form=form)
+```
+
+1. При переходе по маршруту /login/ создается объект form из класса [LoginForm()](lesson_3/forms_13.py) 
+2. Проверка какой вид запроса был отправлен на сервер GET или POST
+3. Если GET-запрос, то отрисовка шаблона из login.html с передачей в переменной form одноименного объекта
+4. Если же POST-запрос, то с помощью оператора and происходит запуск функций валидации каждого поля объекта.
+
+[Шаблон login](lesson_3/templates/login.html):
+
+```html
+{% extends "base.html" %}
+{% block content %}
+<h1>Login</h1>
+<form method="POST" action="{{ url_for('login') }}">
+    {{ form.csrf_token }}
+    <p>
+        {{ form.username.label }}<br>
+        {{ form.username(size=32) }}
+    </p>
+    <p>
+        {{ form.password.label }}<br>
+        {{ form.password(size=32) }}
+    </p>
+    <p>
+        <input type="submit" value="Login">
+    </p>
+</form>
+{% endblock %}
+```
+
+В шаблоне следующий порядок выполнения:
+
+1. Шаблон берет за основу base.html и подставляет свои данные
+2. В блоке контента, в теге form, параметр action формируется ссылка на маршрута /login/
+3. Внутрь формы передается csrf-токен, это позволят избежать прямого обращения к форме миную браузер.
+4. Далее визуализируются поля формы:
+
+    - Метка (название) поля username
+    - Поле username размером 32 символа
+    - Метка поля password
+    - Поле password размером 32 символа
+
+### Обработка данных из формы
+
+В [основном компоненте](lesson_3/app_14.py) определим маршрут /route/
+
+```python
+@app.route('/register/', methods=['GET', 'POST'])
+def register():
+    form = RegistrationForm()
+    if request.method == 'POST' and form.validate():
+        # Обработка данных из формы
+        email = form.email.data
+        password = form.password.data
+        print(email, password)
+    ...
+    return render_template('register.html', form=form)
+```
+
+Похоже на предыдущую форма, но с помощью свойства data мы можем получать данные из полей формы
+
+[Шаблон register.html](lesson_3/templates/register.html) похож на login.html, но мы не указываем поля явно:
+
+```html
+{% extends "base.html" %}
+{% block content %}
+<h1>Login</h1>
+<form method="POST" action="{{ url_for('register') }}">
+    {{ form.csrf_token }}
+    {% for field in form if field.name != 'csrf_token' %}
+    <p>
+        {{ field.label }}<br>
+        {{ field }}
+        {% if field.errors %}
+    <ul class="alert alert-danger">
+        {% for error in field.errors %}
+        <li>{{ error }}</li>
+        {% endfor %}
+    </ul>
+    {% endif %}
+    </p>
+    {% endfor %}
+    <p>
+        <input type="submit" value="Register">
+    </p>
+</form>
+{% endblock %}
+```
+
+Чтобы не писать каждый раз имя поля формы есть в шаблоне используется цикл:
+
+```html
+{% for field in form if field.name != 'csrf_token' %}
+```
+
+Цикл выводит все поля кроме нашего токена, который был выведен ранее. Вложенный цикл проводит валидацию на ошибки и если ошибки были, то они будут выведены пользователю в браузер, под нужным полем формы.
+Также в консоль будет выведен текст введенный в форму, включая пароль, который был спрятан за точками. Это говорит о том что пароль может быть виден на сервере открытым текстом.
+
