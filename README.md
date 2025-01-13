@@ -1372,7 +1372,7 @@ async def read_item(item_id: int, q: str = None):
 @app.get("/")
 async def read_root():
     logger.info('Отработал GET запрос.')
-    return {"Hello": "World"
+    return {"Hello": "World"}
 ```
 
 #### Метод post()
@@ -1387,3 +1387,223 @@ async def create_item(item: Item):
 ```
 
 Код выше не будет работать, так как мы пока не определили объект Item из пакета `pydantic`
+
+#### Метод PUT
+
+C помощью декоратора @app.put() в [скрипе](lesson_5/main_05.py) происходит обновление данных на сервере:
+
+```python
+@app.put("/items/{item_id}")
+async def update_item(item_id: int, item: Item):
+    logger.info(f'Отработал PUT запрос для item id = {item_id}.')
+    return {"item_id": item_id, "item": item}
+```
+
+#### Метод DELETE
+
+C помощью декоратора @app.delete() в [скрипе](lesson_5/main_06.py) происходит удаление данных на сервере:
+
+```python
+@app.delete("/items/{item_id}")
+async def delete_item(item_id: int):
+    logger.info(f'Отработал DELETE {item_id}.')
+    return {"item_id": item_id}
+```
+
+### pydantic
+
+Позволяет валидировать данные с помощью класса BaseModel.
+
+В [скрипе](lesson_5/main_07.py) создан класс Item на основе суперкласса BaseModel:
+
+```python
+from typing import Optional
+from pydantic import BaseModel
+
+class Item(BaseModel):
+    name: str
+    description: Optional[str] = None
+    price: float
+    tax: Optional[float] = None
+```
+
+Класс содержит поля:
+- name - обязательное поле
+- description - имеет анотацию Optional, т.е. поле не обязательное
+- price - обязательное поле
+- tax - имеет анотацию Optional, т.е. поле не обязательное
+
+Если данные не соответствуют описанию класса Item, то FastAPI вернет ошибку 422 с описанием ошибки.
+
+### curl
+
+Curl (client URL) — это инструмент командной строки. [Скрипт](lesson_5/main_08.py) позволяет обработать все виды запросов ниже.
+
+#### POST
+
+```bash
+curl -X 'POST' 'http://127.0.0.1:8000/items/' -H 'accept: application/json' -H 'Content-Type: application/json' -d '{"name": "BestSale", "description": "The best of the best", "price": 9.99, "tax": 0.99}'
+```
+
+#### PUT
+
+```bash
+curl -X 'PUT' 'http://127.0.0.1:8000/items/42' -H 'accept: application/json' -H 'Content-Type: application/json' -d '{"name": "NewName", "description": "New description of the object", "price": 7.77, "tax": 10.01}'
+```
+
+Можно не указывать необязательные (Optional) поля из класса Item:
+
+```bash
+curl -X 'PUT' 'http://127.0.0.1:8000/items/42' -H 'accept: application/json' -H 'Content-Type: application/json' -d '{"name": "NewName",  "price": 7.77}'
+```
+
+Плохим запрос будет, если не указать хотябы одно необязательное поле:
+
+```bash
+curl -X 'PUT' 'http://127.0.0.1:8000/items/42' -H 'accept: application/json' -H 'Content-Type: application/json' -d '{"name": "NewName"}'
+```
+
+Ответ сервера будет с ошибкой: `422 Unprocessable Entity`
+
+#### DELETE
+
+```bash
+curl -X 'DELETE' 'http://127.0.0.1:8000/items/42' -H 'accept: application/json' 
+```
+
+### Конечные точки API
+
+Конечная точка API — это URL-адрес, по которому клиент может отправлять запросы к серверу.
+
+В FastAPI определение конечных точек происходит с помощью декораторов, как [в скрипте](lesson_5/main_09.py):
+
+```python
+@app.get("/")
+async def read_root():
+    return {"Hello": "World"}
+```
+
+Запросы могут содержат параметры, которые обрабатываются на сервере как [в скрипте](lesson_5/main_10.py):
+
+```python    
+@app.get("/items/{item_id}")
+async def read_item(item_id: int, q: str = None):
+    if q:
+        return {"item_id": item_id, "q": q}
+    return {"item_id": item_id}
+```
+
+Если параметр q задан, функция возвращает JSON-объект с обоими параметрами, иначе — только с item_id.
+
+[Как в скрипте](lesson_5/main_11.py) можно определить несколько параметров одном URL:
+
+```python
+@app.get("/users/{user_id}/orders/{order_id}")
+async def read_item(user_id: int, order_id: int):
+    # обработка данных
+    return {"user_id": user_id, "order_id": order_id}
+```
+
+[В скрипте](lesson_5/main_12.py) маршрут /items/, который принимает два
+параметра запроса skip и limit. 
+
+```python
+@app.get("/items/")
+async def read_item(skip: int = 0, limit: int = 10):
+    return {"skip": skip, "limit": limit}
+```
+
+Перейдя по адресу http://127.0.0.1:8000/items/?skip=20&limit=30 получим ответ json объектом:
+
+```json
+{"skip": 20, "limit": 30}
+```
+
+#### Форматирование ответов API
+
+Используя функции модуля fastapi.responses можно форматировать объект в форматы:
+
+- HTML
+- JSON
+
+##### HTML
+
+В [скрипте](lesson_5/main_13.py) конечная точка возвращает html-страницу:
+
+```python
+from fastapi.responses import HTMLResponse
+
+@app.get("/", response_class=HTMLResponse)
+async def read_root():
+    return "<h1>Hello World</h1>"
+```
+
+Импортируется класс HTMLResponse, который указывается в качестве параметра метода декоратора @apt.get().
+
+
+##### JSON
+
+В [скрипте](lesson_5/main_14.py) конечная точка возвращает json-объект:
+
+```python
+from fastapi.responses import JSONResponse
+
+@app.get("/message")
+async def read_message():
+    message = {"message": "Hello World"}
+    return JSONResponse(content=message, status_code=200)
+```
+
+В этом случае класс JSONResponse используется в качестве функции, принимающией словарь с сообщением и кодом ответа.
+
+### Jinja
+
+В [скрипте](lesson_5/main_15.py) импортируем класс Jinja2Templates из модуля FastAPI.templating, который использует шаблони jinja2 для динамического html-контента:
+
+```python
+from fastapi.templating import Jinja2Templates
+
+@app.get("/{name}", response_class=HTMLResponse)
+async def read_item(request: Request, name: str):
+    return templates.TemplateResponse("item.html", {"request": request, "name": name})
+```
+
+Метод .TemplateResponse() объекта на основе класса Jinja2Templates получает [шаблон](lesson_5/templates/item.html):
+
+```html
+<head>
+    <meta charset="UTF-8">
+    <title>Item - {{ name }}</title>
+</head>
+<body>
+    <h1>Hello, {{ name|title }}!</h1>
+</body>
+```
+
+### Автодокументация API
+
+FastAPI имеет инструмент автоматическйо генерации двух вариантов документации API: 
+
+- интерактивную документацию Swagger
+- альтернативную документацию ReDoc
+
+#### Swagger
+
+При переходе по адресу http://localhost:8000/docs на странице будут представлены все маршруты и параметры, доступные в веб-приложении. Можно отправлять запросы к API прямо из браузера.
+
+#### ReDoc
+
+Перейдя по адресу http://localhost:8000/redoc. На странице будет отображена документация API в формате OpenAPI. Также есть описание парометров, но ReDoc не позволяет отправлять запросы к API из интерфейса.
+
+Документация генерируется автоматически даже для самого простого [скрипта](lesson_5/main_16.py):
+
+```python
+from fastapi import FastAPI
+app = FastAPI()
+
+@app.get("/hello/{name}")
+async def read_item(name: str, age: int):
+    return {"Hello": name, "Age": age}
+```
+
+Для более продвинутых настроек документации, рекомендуется импортировать модуль openapi_url как показано в [скрипте](lesson_5/main_17.py). В нем переопределен метод custom_openapi, который генерирует схему OpenAPI вручную. Также установлено значение параметра openapi_url, чтобы FastAPI знал, где разместить схему OpenAPI. При переходе по адресу http://localhost:8000/api/v1/openapi.json отобразится JSON-схема OpenAPI.
